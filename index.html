@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DSA Assistant</title>
+    <style>
+        :root {
+            --bg-color: #0f0f0f;
+            --text-color: #e0e0e0;
+            --accent-color: #00ff9d;
+            --inactive-color: #555;
+            --danger-color: #ff4757;
+            --safe-color: #4facfe;
+            --panel-bg: #1a1a1a;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100dvh; 
+            overflow: hidden;
+        }
+
+        /* Status Bar */
+        #status-bar {
+            background-color: var(--panel-bg);
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .led {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--inactive-color);
+            box-shadow: 0 0 5px var(--inactive-color);
+            transition: all 0.3s ease;
+        }
+
+        .led.active {
+            background-color: var(--accent-color);
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+
+        /* Main Content Area */
+        #main-container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+            min-height: 0; 
+        }
+
+        /* Buffer Display */
+        #input-buffer {
+            background-color: var(--panel-bg);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 150px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            position: relative;
+            transition: border-color 0.3s;
+        }
+
+        #input-buffer.active {
+            border-color: var(--accent-color);
+        }
+
+        #input-buffer::after {
+            content: 'Waiting for input...';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #333;
+            pointer-events: none;
+            display: block;
+        }
+
+        #input-buffer.has-content::after {
+            display: none;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background-color: var(--accent-color);
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .hint {
+            font-size: 0.8rem;
+            color: #666;
+            text-align: center;
+            margin-top: auto;
+            padding-bottom: 20px;
+        }
+
+        /* Footer Controls */
+        #controls {
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            background: var(--panel-bg);
+            border-top: 1px solid #333;
+            flex-shrink: 0; 
+            padding-bottom: max(15px, env(safe-area-inset-bottom));
+        }
+
+        button {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 4px;
+            font-family: inherit;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-size: 0.9rem;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        button.danger {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        button:active {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status-bar">
+        <div class="status-indicator">
+            <div id="mode-led" class="led"></div>
+            <span id="mode-text">PASSTHROUGH</span>
+        </div>
+        <div id="connection-status" style="color: var(--danger-color)">DISCONNECTED</div>
+    </div>
+
+    <div id="main-container">
+        <div id="input-buffer" class="">
+            <span id="buffer-text"></span><span class="cursor"></span>
+        </div>
+        
+        <div class="hint">
+            PC Toggle: <b>Ctrl + Alt + PageUp</b>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <button class="danger" onclick="sendAction('exit_mode')">Exit Mode (Failsafe)</button>
+    </div>
+
+    <script>
+        const modeLed = document.getElementById('mode-led');
+        const modeText = document.getElementById('mode-text');
+        const bufferDiv = document.getElementById('input-buffer');
+        const bufferText = document.getElementById('buffer-text');
+        const connStatus = document.getElementById('connection-status');
+
+        let ws;
+
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                connStatus.textContent = "CONNECTED";
+                connStatus.style.color = "var(--accent-color)";
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateUI(data);
+            };
+
+            ws.onclose = () => {
+                connStatus.textContent = "DISCONNECTED";
+                connStatus.style.color = "var(--danger-color)";
+                setTimeout(connect, 3000);
+            };
+
+            ws.onerror = (err) => ws.close();
+        }
+        
+        function sendAction(action) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({action: action}));
+            }
+        }
+
+        function updateUI(data) {
+            if (data.mode === 'INTERCEPT') {
+                modeLed.classList.add('active');
+                modeText.textContent = "INTERCEPT ACTIVE";
+                modeText.style.color = "var(--accent-color)";
+                bufferDiv.classList.add('active');
+            } else {
+                modeLed.classList.remove('active');
+                modeText.textContent = "PASSTHROUGH";
+                modeText.style.color = "var(--inactive-color)";
+                bufferDiv.classList.remove('active');
+            }
+
+            bufferText.textContent = data.text;
+            
+            if (data.text.length > 0) bufferDiv.classList.add('has-content');
+            else bufferDiv.classList.remove('has-content');
+
+            bufferDiv.scrollTop = bufferDiv.scrollHeight;
+        }
+
+        connect();
+    </script>
+</body>
+</html>
