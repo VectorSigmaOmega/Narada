@@ -1,0 +1,83 @@
+/* src/App.css */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #121212;
+  color: #e0e0e0;
+  margin: 0;
+}
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 15px;
+  box-sizing: border-box;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #333;
+}
+.title-status h1 {
+  font-size: 1.5em;
+  color: #bb86fc;
+  margin: 0;
+}
+.title-status p {
+  margin: 0;
+  color: #aaa;
+}
+.button-group {
+  display: flex;
+  gap: 10px; /* Adds space between the buttons */
+}
+button {
+  background-color: #03dac6;
+  color: #000000;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+button:disabled {
+  background-color: #333;
+  color: #777;
+  cursor: not-allowed;
+}
+.result-box {
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  margin-top: 15px;
+  flex-grow: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 15px;
+}
+pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.1em;
+  line-height: 1.5;
+  color: #e0e0e0;
+  margin: 0;
+}
+/* Add these to the end of App.css */
+
+.solve-button {
+  background-color: #bb86fc; /* A purple for the main action */
+}
+
+.clear-button {
+  background-color: #cf6679; /* A reddish color for a 'destructive' action */
+  color: #000;
+}
+
+.clear-button:hover {
+  background-color: #e68d9b;
+}
